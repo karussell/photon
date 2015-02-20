@@ -37,7 +37,7 @@ public class RequestHandler extends Route {
 		}
 
 		// parse preferred language
-		String lang = request.queryParams("lang");
+		String lang = request.queryParams("locale");
 		if(lang == null) lang = "en";
 		if(!supportedLanguages.contains(lang)) {
 			halt(400, "language " + lang + " is not supported, supported languages are: " + Joiner.on(", ").join(supportedLanguages));
