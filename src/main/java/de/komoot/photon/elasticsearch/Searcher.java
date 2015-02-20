@@ -127,7 +127,7 @@ public class Searcher {
 		List<JSONObject> filteredItems = Lists.newArrayListWithCapacity(results.size());
 		final HashSet<String> keys = Sets.newHashSet();
 		for(JSONObject result : results) {
-			final JSONObject properties = result.getJSONObject(Constants.PROPERTIES);
+                    JSONObject properties = result;
 			if(properties.has(Constants.OSM_KEY) && "highway".equals(properties.getString(Constants.OSM_KEY))) {
 				// result is a street
 				if(properties.has(Constants.POSTCODE) && properties.has(Constants.NAME)) {
