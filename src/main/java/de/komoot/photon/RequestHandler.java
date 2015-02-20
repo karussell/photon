@@ -50,6 +50,21 @@ public class RequestHandler extends Route {
 			lat = Double.valueOf(request.queryParams("lat"));
 		} catch(Exception nfe) {
 		}
+                
+                String point = request.queryParams("point");
+                if(point != null && (lat == null || lon == null)) {
+                    String[] fromStrs = point.split(",");
+                    if (fromStrs.length == 2)
+                    {
+                        try
+                        {
+                            lon = Double.parseDouble(fromStrs[1]);
+                            lat = Double.parseDouble(fromStrs[0]);
+                        } catch (Exception ex)
+                        {
+                        }
+                    }
+                }
 
 		// parse limit for search results
 		int limit;
