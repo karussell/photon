@@ -97,8 +97,10 @@ public class Searcher {
             StrSubstitutor sub = new StrSubstitutor(params.build(), "${", "}");
             query = sub.replace(queryWithTagKeyValueFiltersTemplate);
         }
-		SearchResponse response = client.prepareSearch("photon").setSearchType(SearchType.QUERY_AND_FETCH).setQuery(query).setSize(limit).setTimeout(TimeValue.timeValueSeconds(7)).execute().actionGet();
-		List<JSONObject> results = convert(response.getHits().getHits(), lang);
+		SearchResponse response = client.prepareSearch("photon").setSearchType(SearchType.QUERY_AND_FETCH).
+                        setQuery(query).setSize(limit).setTimeout(TimeValue.timeValueSeconds(5)).
+                        execute().actionGet();
+		List<JSONObject> results = convertGH(response.getHits().getHits(), lang);
 		results = removeStreetDuplicates(results, lang);
 		if(results.size() > limit) {
 			results = results.subList(0, limit);
@@ -153,8 +155,8 @@ public class Searcher {
 
 		return filteredItems;
 	}
-
-	private List<JSONObject> convert(SearchHit[] hits, final String lang) {
+    
+    private List<JSONObject> convert(SearchHit[] hits, final String lang) {
 		final List<JSONObject> list = Lists.newArrayListWithExpectedSize(hits.length);
 		for(SearchHit hit : hits) {
 			final Map<String, Object> source = hit.getSource();
@@ -190,6 +192,46 @@ public class Searcher {
 			feature.put(Constants.PROPERTIES, properties);
 
 			list.add(feature);
+		}
+		return list;
+	}
+
+	private List<JSONObject> convertGH(SearchHit[] hits, final String lang) {
+		final List<JSONObject> list = Lists.newArrayListWithExpectedSize(hits.length);
+		for(SearchHit hit : hits) {
+			final Map<String, Object> source = hit.getSource();
+                        
+			// populate properties
+			final JSONObject properties = new JSONObject();
+                        
+                        JSONObject point = new JSONObject();
+                        final Map<String, Double> coordinate = (Map<String, Double>) source.get("coordinate");                        
+                        point.put("lat", coordinate.get("lat"));
+                        point.put("lng", coordinate.get("lon"));
+                        properties.put("point", point);
+
+			// language unspecific properties
+			for(String key : KEYS_LANG_UNSPEC) {
+				if(source.containsKey(key))
+					properties.put(key, source.get(key));
+			}
+
+			// language specific properties
+			for(String key : KEYS_LANG_SPEC) {
+				if(source.containsKey(key))
+					properties.put(key, getLocalised(source, key, lang));
+			}
+
+			// add extent of geometry
+			final Map<String, Object> extent = (Map<String, Object>) source.get("extent");
+			if(extent != null) {
+				List<List<Double>> coords = (List<List<Double>>) extent.get("coordinates");
+				final List<Double> nw = coords.get(0);
+				final List<Double> se = coords.get(1);
+				properties.put("extent", new JSONArray(Lists.newArrayList(nw.get(0), nw.get(1), se.get(0), se.get(1))));
+			}
+
+			list.add(properties);
 		}
 		return list;
 	}

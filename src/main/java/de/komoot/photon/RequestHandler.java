@@ -62,16 +62,18 @@ public class RequestHandler extends Route {
         String osmKey = request.queryParams("osm_key");
         String osmValue = request.queryParams("osm_value");
 
+        long start = System.currentTimeMillis();
         List<JSONObject> results = searcher.search(query, lang, lon, lat, osmKey,osmValue,limit, true);
 		if(results.isEmpty()) {
 			// try again, but less restrictive
 			results = searcher.search(query, lang, lon, lat, osmKey,osmValue,limit, false);
 		}
+                long end = System.currentTimeMillis();
 
 		// build geojson
 		final JSONObject collection = new JSONObject();
-		collection.put("type", "FeatureCollection");
-		collection.put("features", new JSONArray(results));
+                collection.put("took", end - start);
+		collection.put("hits", results);
 
 		response.type("application/json; charset=utf-8");
 		response.header("Access-Control-Allow-Origin", "*");
