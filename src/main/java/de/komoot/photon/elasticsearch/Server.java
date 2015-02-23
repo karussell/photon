@@ -41,13 +41,13 @@ public class Server {
 	private File esDirectory;
 	private final boolean isTest;
 	private final String[] languages;
-        private String transportAddress;
+        private String transportAddresses;
 
 	public Server(CommandLineArgs args) {            
-		this(args.getCluster(), args.getDataDirectory(), args.getLanguages(), "", false);
+		this(args.getCluster(), args.getDataDirectory(), args.getLanguages(), args.getTransportAddresses(), false);
 	}
 
-	public Server(String clusterName, String mainDirectory, String languages, String transportAddress, boolean isTest) {
+	public Server(String clusterName, String mainDirectory, String languages, String transportAddresses, boolean isTest) {
 		try {
 			if(SystemUtils.IS_OS_WINDOWS) {
 				setupDirectories(new URL("file:///" + mainDirectory));
@@ -59,7 +59,7 @@ public class Server {
 		}
 		this.clusterName = clusterName;
 		this.languages = languages.split(",");
-                this.transportAddress = transportAddress;
+                this.transportAddresses = transportAddresses;
 		this.isTest = isTest;
 	}
 
@@ -93,9 +93,9 @@ public class Server {
 			}
 		}
 
-                if(transportAddress != null && !transportAddress.isEmpty()) {                    
+                if(transportAddresses != null && !transportAddresses.isEmpty()) {                    
                     TransportClient trClient = new TransportClient();
-                    for(String tAddr : transportAddress.split(",")) {
+                    for(String tAddr : transportAddresses.split(",")) {
                         int index = tAddr.indexOf(":");
                         if(index >= 0) {                            
                             int port = Integer.parseInt(tAddr.substring(index + 1));
