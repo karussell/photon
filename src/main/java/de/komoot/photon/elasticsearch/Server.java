@@ -39,7 +39,7 @@ import static org.elasticsearch.node.NodeBuilder.nodeBuilder;
 public class Server {
         private Node esNode;
 	private Client esClient;
-	private String clusterName = "photon_v0.2.1";
+	private String clusterName;
 	private File esDirectory;
 	private final boolean isTest;
 	private final String[] languages;
@@ -72,31 +72,11 @@ public class Server {
 
 		// default is 'local', 'none' means no data after node restart!
 		if(isTest)
-			sBuilder.put("gateway.type", "none");
-
-		Settings settings = sBuilder.build();
-
-		final String pluginPath = this.getClass().getResource("/elasticsearch-wordending-tokenfilter-0.0.1.zip").toExternalForm();
-		PluginManager pluginManager = new PluginManager(new Environment(settings), pluginPath, PluginManager.OutputMode.VERBOSE, new TimeValue(30000));
-		try {
-			pluginManager.downloadAndExtract("ybon/elasticsearch-wordending-tokenfilter/0.0.1");
-		} catch(IOException e) {
-			log.debug("could not install ybon/elasticsearch-wordending-tokenfilter/0.0.1", e);
-		}
-
-		if(!isTest) {
-			pluginManager = new PluginManager(new Environment(settings), null, PluginManager.OutputMode.VERBOSE, new TimeValue(30000));
-			for(String pluginName : new String[]{"mobz/elasticsearch-head", "polyfractal/elasticsearch-inquisitor"}) {
-				try {
-					pluginManager.downloadAndExtract(pluginName);
-				} catch(IOException e) {
-					log.error(String.format("cannot install plugin: %s: %s", pluginName, e));
-				}
-			}
-		}
+                    sBuilder.put("gateway.type", "none");		
 
                 if(transportAddresses != null && !transportAddresses.isEmpty()) {                    
-                    TransportClient trClient = new TransportClient();
+                    sBuilder.put("cluster.name", clusterName);
+                    TransportClient trClient = new TransportClient(sBuilder.build(), true);
                     List<String> addresses = Arrays.asList(transportAddresses.split(","));
                     for(String tAddr : addresses) {
                         int index = tAddr.indexOf(":");
@@ -107,10 +87,32 @@ public class Server {
                         } else {
                             trClient.addTransportAddress(new InetSocketTransportAddress(tAddr, 9300));
                         }                        
-                    }                    
-                    log.info("started elastic search client connected to " + addresses);
+                    }
+                                        
                     esClient = trClient;
+                    
+                    log.info("started elastic search client connected to " + addresses);                    
                 } else {
+                    Settings settings = sBuilder.build();
+
+                    final String pluginPath = this.getClass().getResource("/elasticsearch-wordending-tokenfilter-0.0.1.zip").toExternalForm();
+                    PluginManager pluginManager = new PluginManager(new Environment(settings), pluginPath, PluginManager.OutputMode.VERBOSE, new TimeValue(30000));
+                    try {
+                        pluginManager.downloadAndExtract("ybon/elasticsearch-wordending-tokenfilter/0.0.1");
+                    } catch(IOException e) {
+                        log.debug("could not install ybon/elasticsearch-wordending-tokenfilter/0.0.1", e);
+                    }
+
+                    if(!isTest) {
+                        pluginManager = new PluginManager(new Environment(settings), null, PluginManager.OutputMode.VERBOSE, new TimeValue(30000));
+                        for(String pluginName : new String[]{"mobz/elasticsearch-head", "polyfractal/elasticsearch-inquisitor"}) {
+                            try {
+                                    pluginManager.downloadAndExtract(pluginName);
+                            } catch(IOException e) {
+                                    log.error(String.format("cannot install plugin: %s: %s", pluginName, e));
+                            }
+                        }
+                    }
                     esNode = nodeBuilder().clusterName(clusterName).loadConfigSettings(true).settings(settings).node();
                     log.info("started elastic search node");
                     esClient = esNode.client();
