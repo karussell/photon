@@ -23,6 +23,8 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import java.util.Arrays;
+import java.util.List;
 import org.elasticsearch.client.transport.TransportClient;
 import org.elasticsearch.common.transport.InetSocketTransportAddress;
 
@@ -95,7 +97,8 @@ public class Server {
 
                 if(transportAddresses != null && !transportAddresses.isEmpty()) {                    
                     TransportClient trClient = new TransportClient();
-                    for(String tAddr : transportAddresses.split(",")) {
+                    List<String> addresses = Arrays.asList(transportAddresses.split(","));
+                    for(String tAddr : addresses) {
                         int index = tAddr.indexOf(":");
                         if(index >= 0) {                            
                             int port = Integer.parseInt(tAddr.substring(index + 1));
@@ -105,6 +108,7 @@ public class Server {
                             trClient.addTransportAddress(new InetSocketTransportAddress(tAddr, 9300));
                         }                        
                     }                    
+                    log.info("started elastic search client connected to " + addresses);
                     esClient = trClient;
                 } else {
                     esNode = nodeBuilder().clusterName(clusterName).loadConfigSettings(true).settings(settings).node();
