@@ -38,12 +38,16 @@ public class RequestHandler extends Route {
 
 		// parse preferred language
 		String languageOnly = request.queryParams("locale");
-                languageOnly = languageOnly.replace("-", "_");
-                if (languageOnly.contains("_"))
-                    languageOnly = languageOnly.substring(0, 2);
-                
-		if(languageOnly == null || !supportedLanguages.contains(languageOnly)) 
+                if(languageOnly == null || languageOnly.isEmpty()) {
                     languageOnly = "en";
+                } else {
+                    languageOnly = languageOnly.replace("-", "_");
+                    if (languageOnly.contains("_"))
+                        languageOnly = languageOnly.substring(0, 2);
+
+                    if(!supportedLanguages.contains(languageOnly)) 
+                        languageOnly = "en";
+                }
 
 		// parse location bias
 		Double lon = null, lat = null;
