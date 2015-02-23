@@ -37,11 +37,13 @@ public class RequestHandler extends Route {
 		}
 
 		// parse preferred language
-		String lang = request.queryParams("locale");
-		if(lang == null) lang = "en";
-		if(!supportedLanguages.contains(lang)) {
-			halt(400, "language " + lang + " is not supported, supported languages are: " + Joiner.on(", ").join(supportedLanguages));
-		}
+		String languageOnly = request.queryParams("locale");
+                languageOnly = languageOnly.replace("-", "_");
+                if (languageOnly.contains("_"))
+                    languageOnly = languageOnly.substring(0, 2);
+                
+		if(languageOnly == null || !supportedLanguages.contains(languageOnly)) 
+                    languageOnly = "en";
 
 		// parse location bias
 		Double lon = null, lat = null;
@@ -78,16 +80,17 @@ public class RequestHandler extends Route {
         String osmValue = request.queryParams("osm_value");
 
         long start = System.currentTimeMillis();
-        List<JSONObject> results = searcher.search(query, lang, lon, lat, osmKey,osmValue,limit, true);
+        List<JSONObject> results = searcher.search(query, languageOnly, lon, lat, osmKey,osmValue,limit, true);
 		if(results.isEmpty()) {
 			// try again, but less restrictive
-			results = searcher.search(query, lang, lon, lat, osmKey,osmValue,limit, false);
+			results = searcher.search(query, languageOnly, lon, lat, osmKey,osmValue,limit, false);
 		}
                 long end = System.currentTimeMillis();
 
 		// build geojson
 		final JSONObject collection = new JSONObject();
                 collection.put("took", end - start);
+                collection.put("locale", languageOnly);
 		collection.put("hits", results);
 
 		response.type("application/json; charset=utf-8");
