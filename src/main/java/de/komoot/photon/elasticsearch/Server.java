@@ -1,5 +1,6 @@
 package de.komoot.photon.elasticsearch;
 
+import de.komoot.photon.CommandLineArgs;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.SystemUtils;
@@ -22,6 +23,8 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import org.elasticsearch.client.transport.TransportClient;
+import org.elasticsearch.common.transport.InetSocketTransportAddress;
 
 import static org.elasticsearch.node.NodeBuilder.nodeBuilder;
 
@@ -32,17 +35,19 @@ import static org.elasticsearch.node.NodeBuilder.nodeBuilder;
  */
 @Slf4j
 public class Server {
-	private Node esNode;
+        private Node esNode;
+	private Client esClient;
 	private String clusterName = "photon_v0.2.1";
 	private File esDirectory;
 	private final boolean isTest;
 	private final String[] languages;
+        private String transportAddress;
 
-	public Server(String clusterName, String mainDirectory, String languages) {
-		this(clusterName, mainDirectory, languages, false);
+	public Server(CommandLineArgs args) {            
+		this(args.getCluster(), args.getDataDirectory(), args.getLanguages(), "", false);
 	}
 
-	public Server(String clusterName, String mainDirectory, String languages, boolean isTest) {
+	public Server(String clusterName, String mainDirectory, String languages, String transportAddress, boolean isTest) {
 		try {
 			if(SystemUtils.IS_OS_WINDOWS) {
 				setupDirectories(new URL("file:///" + mainDirectory));
@@ -54,6 +59,7 @@ public class Server {
 		}
 		this.clusterName = clusterName;
 		this.languages = languages.split(",");
+                this.transportAddress = transportAddress;
 		this.isTest = isTest;
 	}
 
@@ -87,8 +93,24 @@ public class Server {
 			}
 		}
 
-		esNode = nodeBuilder().clusterName(clusterName).loadConfigSettings(true).settings(settings).node();
-		log.info("started elastic search node");
+                if(transportAddress != null && !transportAddress.isEmpty()) {                    
+                    TransportClient trClient = new TransportClient();
+                    for(String tAddr : transportAddress.split(",")) {
+                        int index = tAddr.indexOf(":");
+                        if(index >= 0) {                            
+                            int port = Integer.parseInt(tAddr.substring(index + 1));
+                            String addrStr = tAddr.substring(0, index);
+                            trClient.addTransportAddress(new InetSocketTransportAddress(addrStr, port));
+                        } else {
+                            trClient.addTransportAddress(new InetSocketTransportAddress(tAddr, 9300));
+                        }                        
+                    }                    
+                    esClient = trClient;
+                } else {
+                    esNode = nodeBuilder().clusterName(clusterName).loadConfigSettings(true).settings(settings).node();
+                    log.info("started elastic search node");
+                    esClient = esNode.client();
+                }		
 		return this;
 	}
 
@@ -96,14 +118,17 @@ public class Server {
 	 * stops the elasticsearch node
 	 */
 	public void shutdown() {
-		this.esNode.close();
+                if(esNode != null)
+                    esNode.close();
+                
+		esClient.close();
 	}
 
 	/**
 	 * returns an elasticsearch client
 	 */
 	public Client getClient() {
-		return this.esNode.client();
+		return esClient;
 	}
 
 	private void setupDirectories(URL directoryName) throws IOException, URISyntaxException {
