@@ -7,7 +7,6 @@ import com.vividsolutions.jts.geom.PrecisionModel;
 import spark.QueryParamsMap;
 import spark.Request;
 
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -16,42 +15,26 @@ import java.util.Set;
  * Created by Sachin Dole on 2/12/2015.
  */
 public class PhotonRequestFactory {
-    private final LanguageChecker languageChecker;
     private final static GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
-
-    protected static HashSet<String> m_hsRequestQueryParams = new HashSet<>(Arrays.asList("lang", "q", "lon", "lat", "limit", "distance_sort", "osm_tag"));
+    private final Set<String> supportedLanguages;
 
     public PhotonRequestFactory(Set<String> supportedLanguages) {
-        this.languageChecker = new LanguageChecker(supportedLanguages);
+        this.supportedLanguages = supportedLanguages;
     }
 
     public <R extends PhotonRequest> R create(Request webRequest) throws BadRequestException {
+        String language = getLanguage(webRequest, supportedLanguages);
+        Point locationForBias = getPoint(webRequest);
 
-
-        for (String queryParam : webRequest.queryParams())
-            if (!m_hsRequestQueryParams.contains(queryParam))
-                throw new BadRequestException(400, "unknown query parameter '" + queryParam + "'.  Allowed parameters are: " + m_hsRequestQueryParams);
-
-
-        String language = webRequest.queryParams("lang");
-        language = language == null ? "en" : language;
-        languageChecker.apply(language);
         String query = webRequest.queryParams("q");
         if (query == null) throw new BadRequestException(400, "missing search term 'q': /?q=berlin");
         Integer limit;
         try {
             limit = Integer.valueOf(webRequest.queryParams("limit"));
         } catch (NumberFormatException e) {
-            limit = 15;
+            limit = 10;
         }
-        Point locationForBias = null;
-        try {
-            Double lon = Double.valueOf(webRequest.queryParams("lon"));
-            Double lat = Double.valueOf(webRequest.queryParams("lat"));
-            locationForBias = geometryFactory.createPoint(new Coordinate(lon, lat));
-        } catch (Exception nfe) {
-            //ignore
-        }
+
         Boolean locationDistanceSort = true;
         try {
             if (webRequest.queryParams("distance_sort") == null)
@@ -72,6 +55,55 @@ public class PhotonRequestFactory {
 
 
         return (R) photonRequest;
+    }
+
+    public static String getLanguage(Request webRequest, Set<String> supportedLanguages) {
+        String language = webRequest.queryParams("lang");
+        if (language == null || language.isEmpty()) {
+            language = webRequest.queryParams("locale");
+            language = language == null || language.isEmpty() ? "en" : language;
+            language = language.replace("-", "_");
+            if (language.contains("_"))
+                language = language.substring(0, 2);
+
+            if (!supportedLanguages.contains(language))
+                language = "en";
+        }
+        return language;
+    }
+
+    public static Point getPoint(Request webRequest) throws BadRequestException {
+        try {
+            Double lon = null, lat = null;
+            String point = webRequest.queryParamOrDefault("point", "");
+            if (!point.isEmpty()) {
+                String[] fromStrs = point.split(",");
+                if (fromStrs.length == 2)
+                    try {
+                        lon = Double.parseDouble(fromStrs[1]);
+                        lat = Double.parseDouble(fromStrs[0]);
+                    } catch (Exception ex) {
+                        throw new BadRequestException(400, "invalid search term 'point'");
+                    }
+            }
+
+            if (lat == null || lon == null) {
+                lon = Double.valueOf(webRequest.queryParams("lon"));
+                if (lon > 180.0 || lon < -180.00) {
+                    throw new BadRequestException(400, "invalid search term 'lon', expected number >= -180.0 and <= 180.0");
+                }
+                lat = Double.valueOf(webRequest.queryParams("lat"));
+                if (lat > 90.0 || lat < -90.00) {
+                    throw new BadRequestException(400, "invalid search term 'lat', expected number >= -90.0 and <= 90.0");
+                }
+            }
+
+            return geometryFactory.createPoint(new Coordinate(lon, lat));
+        } catch (NumberFormatException nfe) {
+            throw new BadRequestException(400, "invalid search term 'lat' and/or 'lon': /?lat=51.5&lon=8.0");
+        } catch (NullPointerException nfe) {
+            return null;
+        }
     }
 
     private void setUpTagFilters(FilteredPhotonRequest request, String[] tagFilters) {

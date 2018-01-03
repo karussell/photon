@@ -26,18 +26,19 @@ import static spark.Spark.halt;
 public class SearchRequestHandler<R extends PhotonRequest> extends RouteImpl {
     private final PhotonRequestFactory photonRequestFactory;
     private final PhotonRequestHandlerFactory requestHandlerFactory;
-    private final ConvertToGeoJson geoJsonConverter;
+    // private final ConvertToGeoJson geoJsonConverter;
 
     SearchRequestHandler(String path, Client esNodeClient, String languages) {
         super(path);
         Set<String> supportedLanguages = new HashSet<String>(Arrays.asList(languages.split(",")));
         this.photonRequestFactory = new PhotonRequestFactory(supportedLanguages);
-        this.geoJsonConverter = new ConvertToGeoJson();
+        // this.geoJsonConverter = new ConvertToGeoJson();
         this.requestHandlerFactory = new PhotonRequestHandlerFactory(new BaseElasticsearchSearcher(esNodeClient));
     }
 
     @Override
     public String handle(Request request, Response response) {
+        long start = System.currentTimeMillis();
         R photonRequest = null;
         try {
             photonRequest = photonRequestFactory.create(request);
@@ -48,12 +49,17 @@ public class SearchRequestHandler<R extends PhotonRequest> extends RouteImpl {
         }
         PhotonRequestHandler<R> handler = requestHandlerFactory.createHandler(photonRequest);
         List<JSONObject> results = handler.handle(photonRequest);
-        JSONObject geoJsonResults = geoJsonConverter.convert(results);
+        long end = System.currentTimeMillis();
+
+        // GH change
+        final JSONObject collection = new JSONObject();
+        collection.put("took", end - start);
+        collection.put("hits", results);
         response.type("application/json; charset=utf-8");
         response.header("Access-Control-Allow-Origin", "*");
         if (request.queryParams("debug") != null)
-            return geoJsonResults.toString(4);
+            return collection.toString(4);
 
-        return geoJsonResults.toString();
+        return collection.toString();
     }
 }

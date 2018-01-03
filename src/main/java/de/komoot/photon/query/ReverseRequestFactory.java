@@ -1,54 +1,27 @@
 package de.komoot.photon.query;
 
-import com.vividsolutions.jts.geom.Coordinate;
-import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.Point;
-import com.vividsolutions.jts.geom.PrecisionModel;
 import spark.Request;
 
-import java.util.Arrays;
-import java.util.HashSet;
 import java.util.Set;
 
 /**
  * @author svantulden
  */
 public class ReverseRequestFactory {
-    private final LanguageChecker languageChecker;
-    private final static GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
-
-    protected static HashSet<String> m_hsRequestQueryParams = new HashSet<>(Arrays.asList("lang", "lon", "lat", "radius", "query_string_filter", "distance_sort", "limit"));
+    private final Set<String> supportedLanguages;
+    // private final LanguageChecker languageChecker;
 
     public ReverseRequestFactory(Set<String> supportedLanguages) {
-        this.languageChecker = new LanguageChecker(supportedLanguages);
+        // this.languageChecker = new LanguageChecker(supportedLanguages);
+        this.supportedLanguages = supportedLanguages;
     }
 
     public <R extends ReverseRequest> R create(Request webRequest) throws BadRequestException {
-
-
-        for (String queryParam : webRequest.queryParams())
-            if (!m_hsRequestQueryParams.contains(queryParam))
-                throw new BadRequestException(400, "unknown query parameter '" + queryParam + "'.  Allowed parameters are: " + m_hsRequestQueryParams);
-
-
-        String language = webRequest.queryParams("lang");
-        language = language == null ? "en" : language;
-        languageChecker.apply(language);
-
-        Point location;
-        try {
-            Double lon = Double.valueOf(webRequest.queryParams("lon"));
-            if (lon > 180.0 || lon < -180.00) {
-                throw new BadRequestException(400, "invalid search term 'lon', expected number >= -180.0 and <= 180.0");
-            }
-            Double lat = Double.valueOf(webRequest.queryParams("lat"));
-            if (lat > 90.0 || lat < -90.00) {
-                throw new BadRequestException(400, "invalid search term 'lat', expected number >= -90.0 and <= 90.0");
-            }
-            location = geometryFactory.createPoint(new Coordinate(lon, lat));
-        } catch (NumberFormatException nfe) {
-            throw new BadRequestException(400, "invalid search term 'lat' and/or 'lon': /?lat=51.5&lon=8.0");
-        } catch (NullPointerException nfe) {
+        // GH change, parse preferred language
+        String language = PhotonRequestFactory.getLanguage(webRequest, supportedLanguages);
+        Point location = PhotonRequestFactory.getPoint(webRequest);
+        if (location == null) {
             throw new BadRequestException(400, "missing search term 'lat' and/or 'lon': /?lat=51.5&lon=8.0");
         }
 
@@ -97,9 +70,7 @@ public class ReverseRequestFactory {
             }
         }
 
-
         ReverseRequest reverseRequest = new ReverseRequest(location, language, radius, queryStringFilter, limit, locationDistanceSort);
-
         return (R) reverseRequest;
     }
 }
