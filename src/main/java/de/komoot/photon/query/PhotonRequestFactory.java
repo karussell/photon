@@ -35,16 +35,13 @@ public class PhotonRequestFactory {
             limit = 10;
         }
 
-        Boolean locationDistanceSort = true;
+        Boolean locationDistanceSort;
         try {
-            if (webRequest.queryParams("distance_sort") == null)
-                locationDistanceSort = true;
-            else
-                locationDistanceSort = Boolean.valueOf(webRequest.queryParams("distance_sort"));
-
+            locationDistanceSort = Boolean.valueOf(webRequest.queryParamOrDefault("distance_sort", "false"));
         } catch (Exception nfe) {
-            //ignore
+            throw new BadRequestException(400, "invalid parameter 'distance_sort', can only be true or false");
         }
+
         QueryParamsMap tagFiltersQueryMap = webRequest.queryMap("osm_tag");
         if (!new CheckIfFilteredRequest().execute(tagFiltersQueryMap)) {
             return (R) new PhotonRequest(query, limit, locationForBias, locationDistanceSort, language);
