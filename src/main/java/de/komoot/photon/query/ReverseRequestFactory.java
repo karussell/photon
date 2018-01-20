@@ -3,6 +3,8 @@ package de.komoot.photon.query;
 import com.vividsolutions.jts.geom.Point;
 import spark.Request;
 
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Set;
 
 /**
@@ -41,13 +43,7 @@ public class ReverseRequestFactory {
             }
         }
 
-        Boolean locationDistanceSort;
-        try {
-            locationDistanceSort = Boolean.valueOf(webRequest.queryParamOrDefault("distance_sort", "false"));
-        } catch (Exception nfe) {
-            throw new BadRequestException(400, "invalid parameter 'distance_sort', can only be true or false");
-        }
-
+        String queryStringFilter = webRequest.queryParams("query_string_filter");
         Integer limit = 1;
         String limitParam = webRequest.queryParams("limit");
         if (limitParam != null) {
@@ -64,8 +60,7 @@ public class ReverseRequestFactory {
             }
         }
 
-        String queryStringFilter = webRequest.queryParams("query_string_filter");
-        ReverseRequest reverseRequest = new ReverseRequest(location, language, radius, queryStringFilter, limit, locationDistanceSort);
+        ReverseRequest reverseRequest = new ReverseRequest(location, language, radius, queryStringFilter, limit);
         return (R) reverseRequest;
     }
 }

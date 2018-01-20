@@ -7,6 +7,7 @@ import com.vividsolutions.jts.geom.PrecisionModel;
 import spark.QueryParamsMap;
 import spark.Request;
 
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -35,18 +36,19 @@ public class PhotonRequestFactory {
             limit = 10;
         }
 
-        Boolean locationDistanceSort;
+        // unit km
+        double radius = 5;
         try {
-            locationDistanceSort = Boolean.valueOf(webRequest.queryParamOrDefault("distance_sort", "false"));
+            radius = Double.parseDouble(webRequest.queryParamOrDefault("radius", "5"));
         } catch (Exception nfe) {
-            throw new BadRequestException(400, "invalid parameter 'distance_sort', can only be true or false");
+            //ignore
         }
 
         QueryParamsMap tagFiltersQueryMap = webRequest.queryMap("osm_tag");
         if (!new CheckIfFilteredRequest().execute(tagFiltersQueryMap)) {
-            return (R) new PhotonRequest(query, limit, locationForBias, locationDistanceSort, language);
+            return (R) new PhotonRequest(query, limit, locationForBias, radius, language);
         }
-        FilteredPhotonRequest photonRequest = new FilteredPhotonRequest(query, limit, locationForBias, locationDistanceSort, language);
+        FilteredPhotonRequest photonRequest = new FilteredPhotonRequest(query, limit, locationForBias, radius, language);
         String[] tagFilters = tagFiltersQueryMap.values();
         setUpTagFilters(photonRequest, tagFilters);
 
