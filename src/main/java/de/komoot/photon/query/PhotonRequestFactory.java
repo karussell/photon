@@ -7,7 +7,6 @@ import com.vividsolutions.jts.geom.PrecisionModel;
 import spark.QueryParamsMap;
 import spark.Request;
 
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -27,8 +26,12 @@ public class PhotonRequestFactory {
         String language = getLanguage(webRequest, supportedLanguages);
         Point locationForBias = getPoint(webRequest);
 
-        String query = webRequest.queryParams("q");
-        if (query == null) throw new BadRequestException(400, "missing search term 'q': /?q=berlin");
+        String query = webRequest.queryParamOrDefault("query", "");
+        if (query.isEmpty()) {
+            query = webRequest.queryParamOrDefault("q", "");
+            if (query.isEmpty())
+                throw new BadRequestException(400, "missing search term 'q': /?q=berlin");
+        }
         Integer limit;
         try {
             limit = Integer.valueOf(webRequest.queryParams("limit"));
