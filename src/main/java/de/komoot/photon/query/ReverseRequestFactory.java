@@ -27,7 +27,7 @@ public class ReverseRequestFactory {
             throw new BadRequestException(400, "missing search term 'lat' and/or 'lon': /?lat=51.5&lon=8.0");
         }
 
-        Double radius = 1d;
+        double radius = 5;
         String radiusParam = webRequest.queryParams("radius");
         if (radiusParam != null) {
             try {
