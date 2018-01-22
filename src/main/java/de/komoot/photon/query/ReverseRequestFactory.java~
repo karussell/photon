@@ -44,7 +44,7 @@ public class ReverseRequestFactory {
         }
 
         String queryStringFilter = webRequest.queryParams("query_string_filter");
-        Integer limit = 5;
+        Integer limit = 5
         String limitParam = webRequest.queryParams("limit");
         if (limitParam != null) {
             try {
