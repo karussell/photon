@@ -27,6 +27,7 @@ public class ReverseRequestFactory {
             throw new BadRequestException(400, "missing search term 'lat' and/or 'lon': /?lat=51.5&lon=8.0");
         }
 
+        // GH change, default radius frome 1 to 5
         double radius = 5;
         String radiusParam = webRequest.queryParams("radius");
         if (radiusParam != null) {
@@ -44,6 +45,7 @@ public class ReverseRequestFactory {
         }
 
         String queryStringFilter = webRequest.queryParams("query_string_filter");
+        // GH change, default limit from 1 to 5
         Integer limit = 5;
         String limitParam = webRequest.queryParams("limit");
         if (limitParam != null) {

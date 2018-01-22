@@ -96,6 +96,18 @@ public class ConvertToJson implements OneWayConverter<SearchResponse, List<JSONO
                     properties.put(key, getLocalised(source, key, lang));
             }
 
+            if (!properties.has(Constants.NAME)) {
+                for (String cst : new String[]{Constants.STREET, Constants.CITY, Constants.STATE, Constants.COUNTRY}) {
+                    if (!properties.has(cst))
+                        continue;
+                    String altValue = (String) properties.get(cst);
+                    if (altValue != null && !altValue.isEmpty()) {
+                        properties.put(Constants.NAME, altValue);
+                        break;
+                    }
+                }
+            }
+
             // add extent of geometry
             final Map<String, Object> extent = (Map<String, Object>) source.get("extent");
             if (extent != null) {
